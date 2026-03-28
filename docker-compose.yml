@@ -1,0 +1,103 @@
+services:
+  # 1. API PRINCIPAL (FrankenPHP / Octane)
+  api:
+    image: ghcr.io/josemiguelfn7/eurorattanmargarita-api:latest
+    container_name: erm_api
+    restart: unless-stopped
+    ports:
+      - "8000:80" # Nginx enviará el tráfico de la API a este puerto
+    env_file:
+      - .env.laravel
+    volumes:
+      - storage_data:/app/storage # Persistencia para tus modelos 3D e imágenes
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - erm_backend_net
+
+  # 2. WEBSOCKETS (Laravel Reverb)
+  reverb:
+    image: ghcr.io/josemiguelfn7/eurorattanmargarita-api:latest
+    container_name: erm_reverb
+    restart: unless-stopped
+    command: php artisan reverb:start --host="0.0.0.0" --port=8080
+    ports:
+      - "8080:8080" # Nginx enviará el tráfico de WebSockets a este puerto
+    env_file:
+      - .env.laravel
+    depends_on:
+      - redis
+    networks:
+      - erm_backend_net
+
+  # 3. TRABAJADOR DE COLAS (Procesa emails, subidas pesadas, etc.)
+  queue:
+    image: ghcr.io/josemiguelfn7/eurorattanmargarita-api:latest
+    container_name: erm_queue
+    restart: unless-stopped
+    command: php artisan queue:work --timeout=90 --tries=3
+    env_file:
+      - .env.laravel
+    volumes:
+      - storage_data:/app/storage # Necesita acceso al storage por si procesa archivos
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - erm_backend_net
+
+  # 4. PROGRAMADOR DE TAREAS (Cronjobs)
+  scheduler:
+    image: ghcr.io/josemiguelfn7/eurorattanmargarita-api:latest
+    container_name: erm_scheduler
+    restart: unless-stopped
+    command: php artisan schedule:work
+    env_file:
+      - .env.laravel
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - erm_backend_net
+
+  # 5. BASE DE DATOS (MySQL)
+  mysql:
+    image: mysql:8.0
+    container_name: erm_mysql
+    restart: unless-stopped
+    env_file:
+      - .env.laravel # Leerá DB_DATABASE, DB_USERNAME, DB_PASSWORD de aquí
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD} # Por seguridad, usamos la misma del env
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql # Persistencia de la base de datos
+    networks:
+      - erm_backend_net
+
+  # 6. CACHÉ, SESIONES Y REVERB (Redis)
+  redis:
+    image: redis:alpine
+    container_name: erm_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data # Persistencia de la caché
+    networks:
+      - erm_backend_net
+
+# --- DEFINICIÓN DE VOLÚMENES Y REDES ---
+volumes:
+  mysql_data:
+    name: erm_mysql_data
+  redis_data:
+    name: erm_redis_data
+  storage_data:
+    name: erm_storage_data
+
+networks:
+  erm_backend_net:
+    name: erm_backend_network
+    driver: bridge
