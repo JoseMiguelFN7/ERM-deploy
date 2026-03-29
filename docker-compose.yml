@@ -1,11 +1,29 @@
 services:
+  # ==========================================
+  # CAPA DE PRESENTACIÓN (FRONTEND)
+  # ==========================================
+  frontend:
+    # Asegúrate de que este sea el nombre exacto de tu repo en minúsculas
+    image: ghcr.io/josemiguelfn7/eurorattanmargarita-frontend:latest
+    container_name: erm_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000" # Nginx enviará el tráfico principal (la tienda) a este puerto
+    env_file:
+      - .env.next # <-- Aislamiento total: solo lee las variables de Next
+    networks:
+      - erm_backend_net
+
+  # ==========================================
+  # CAPA DE LÓGICA DE NEGOCIO (BACKEND)
+  # ==========================================
   # 1. API PRINCIPAL (FrankenPHP / Octane)
   api:
     image: ghcr.io/josemiguelfn7/eurorattanmargarita-api:latest
     container_name: erm_api
     restart: unless-stopped
     ports:
-      - "8000:80" # Nginx enviará el tráfico de la API a este puerto
+      - "8000:80" # Nginx enviará el tráfico de /api a este puerto
     env_file:
       - .env.laravel
     volumes:
@@ -61,6 +79,9 @@ services:
     networks:
       - erm_backend_net
 
+  # ==========================================
+  # CAPA DE DATOS Y PERSISTENCIA
+  # ==========================================
   # 5. BASE DE DATOS (MySQL)
   mysql:
     image: mysql:8.0
