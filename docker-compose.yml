@@ -24,6 +24,11 @@ services:
     command: php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=80 --admin-port=2019
     ports:
       - "8000:80" # Nginx enviará el tráfico de /api a este puerto
+    environment:
+      - MAX_UPLOAD_SIZE=40M
+      - PHP_INI_SCAN_DIR=/usr/local/etc/php/conf.d
+      - UPLOAD_MAX_FILESIZE=40M
+      - POST_MAX_SIZE=40M
     env_file:
       - .env.laravel
     volumes:
