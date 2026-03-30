@@ -21,7 +21,7 @@ services:
     image: ghcr.io/josemiguelfn7/eurorattanmargarita-api:latest
     container_name: erm_api
     restart: unless-stopped
-    command: php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=80 --admin-port=2019
+    command: sh -c "php artisan storage:link && php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=80 --admin-port=2019"
     ports:
       - "8000:80" # Nginx enviará el tráfico de /api a este puerto
     environment:
